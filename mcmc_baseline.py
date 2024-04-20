@@ -1,9 +1,8 @@
 # Generate samples
 import numpy as np
-from matplotlib import pyplot as plt
 
 from envs.bayesian_learning import BayesianLearningEnvironment
-from metropolis_hastings import MetropolisHastingsSampler
+from samplers.metropolis_hastings import MetropolisHastingsSampler
 from tqdm import tqdm
 
 np.random.seed(2024)

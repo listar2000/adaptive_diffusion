@@ -1,4 +1,6 @@
 from abc import ABC, abstractmethod
+from typing import Dict, Any
+
 import numpy as np
 
 
@@ -30,5 +32,19 @@ class Environment(ABC):
 
         Returns:
         - np.ndarray: The Hessian of the objective function.
+        """
+        pass
+
+    @abstractmethod
+    def log_density(self) -> np.ndarray:
+        pass
+
+    @abstractmethod
+    def init_theta(self) -> np.ndarray:
+        """
+        Initialize the parameters `theta` for samplers
+
+        Returns:
+        - np.ndarray: an array of the initialized theta for the current problem
         """
         pass
