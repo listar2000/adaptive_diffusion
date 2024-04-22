@@ -169,16 +169,18 @@ class BayesianLearningHard(Environment):
 #
 # environment = BayesianLearningEnvironment(true_theta, prior_covariance, noise_covariance, num_observations)
 if __name__ == "__main__":
+    generate_bayesian_learning_simple(num=100)
     from tqdm import tqdm
-    data = np.load("../data/bayesian_learning_hard.npz")
-    env = BayesianLearningHard(data=data)
-
-    from samplers.fisher_lmc import FisherLMCSampler
-    from samplers.adaptive_lmc import AdaptiveLMCSampler
-
-    samp = AdaptiveLMCSampler(env=env, _lambda=0.1)
-    states = []
-    for _ in tqdm(range(10000)):
-        states.append(samp.step())
-
-    states = np.array(states)
+    # data = np.load("../data/bayesian_learning_hard.npz")
+    # env = BayesianLearningHard(data=data)
+    #
+    # from samplers.fisher_lmc import FisherLMCSampler
+    # from samplers.adaptive_lmc import AdaptiveLMCSampler
+    # from samplers.metropolis_hastings import MetropolisHastingsSampler
+    #
+    # samp = AdaptiveLMCSampler(env=env, _lambda=0.1)
+    # states = []
+    # for _ in tqdm(range(10000)):
+    #     states.append(samp.step())
+    #
+    # states = np.array(states)

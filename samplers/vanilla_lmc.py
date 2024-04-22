@@ -1,4 +1,5 @@
 import numpy as np
+from tqdm import tqdm
 
 from envs.environment import Environment
 from envs.multi_modal import GaussianMixtures
@@ -44,21 +45,26 @@ class VanillaLMCSampler(object):
             h_diff = self.compute_h_diff(self.current_theta, prop_theta, self.current_score, prop_score, self.epsilon)
             alpha = min(1, np.exp(prop_density + h_diff - self.current_density))
 
-            self.update_epsilon(alpha)
+            self.update_epsilon()
             if alpha > np.random.random():
                 # accept
                 self.current_theta = prop_theta
                 self.current_score = prop_score
                 self.current_density = prop_density
+                self.success += 1
+            self.total += 1
 
+        # print("epsilon after init", self.epsilon)
+        self.success, self.total = 0, 0
         self.initialized = True
 
-    def update_epsilon(self, alpha):
+    def update_epsilon(self):
         """
         Adapt the learning rate
         """
+        alpha = self.success / max(self.total, 1)
         self.epsilon = self.epsilon * (1 + self.rho * (alpha - OPTIMAL_RATE))
-        self.rho = max(1e-3, self.rho * 0.999)
+        # self.rho = max(1e-3, self.rho * 0.999)
 
     def step(self):
         if not self.initialized:
@@ -74,7 +80,7 @@ class VanillaLMCSampler(object):
                                      self.current_score, prop_score, self.epsilon)
         alpha = min(1, np.exp(prop_density + h_diff - self.current_density))
 
-        self.update_epsilon(alpha)
+        self.update_epsilon()
         if alpha > np.random.random():
             # accept
             self.current_theta = prop_theta
@@ -86,31 +92,36 @@ class VanillaLMCSampler(object):
 
 
 if __name__ == '__main__':
-    from metropolis_hastings import MetropolisHastingsSampler
-    from metrics.metrics import univariate_ess
-    from tqdm import tqdm
-    # Initialize the GMM environment
-    means = [np.array([1, 1]), np.array([-1, -1])]  # Example means
-    covariances = [np.eye(2), np.eye(2)]  # Equal uncorrelated covariances
-    weights = [0.5, 0.5]  # Equal weights
+    from envs.bayesian_learning import BayesianLearningSimple, BayesianLearningHard
 
-    gmm_env = GaussianMixtures(means, covariances, weights)
-    # lmc_sampler = FisherLMCSampler(env=gmm_env, init_eps=1)
-    # lmc_sampler.initialize()
+    # from metropolis_hastings import MetropolisHastingsSampler
+    # from metrics.metrics import univariate_ess
+    # from tqdm import tqdm
+    # # Initialize the GMM environment
+    # means = [np.array([1, 1]), np.array([-1, -1])]  # Example means
+    # covariances = [np.eye(2), np.eye(2)]  # Equal uncorrelated covariances
+    # weights = [0.5, 0.5]  # Equal weights
     #
-    # vanilla_sampler = MetropolisHastingsSampler(environment=gmm_env, proposal_std=1)
+    # gmm_env = GaussianMixtures(means, covariances, weights)
+    #
+    # lmc_samps, vanilla_samps = [], []
+    # for i in tqdm(range(10)):
+    #     lmc_sampler = VanillaLMCSampler(env=gmm_env, init_eps=1)
+    #     lmc_samps.append(np.array([lmc_sampler.step() for _ in range(5000)]))
+    #
+    #     vanilla_sampler = MetropolisHastingsSampler(environment=gmm_env, proposal_std=1)
+    #     vanilla_samps.append(np.array([vanilla_sampler.step() for _ in range(5000)]))
+    #
+    # lmc_samps = np.array(lmc_samps)
+    # vanilla_samps = np.array(vanilla_samps)
+    # print(lmc_samps.shape)
+    #
+    # print(univariate_ess(lmc_samps))
+    # print(univariate_ess(vanilla_samps))
+    data = np.load("../data/bayesian_learning_easy.npz")
+    env = BayesianLearningSimple(data=data)
 
-    lmc_samps, vanilla_samps = [], []
-    for i in tqdm(range(10)):
-        lmc_sampler = VanillaLMCSampler(env=gmm_env, init_eps=1)
-        lmc_samps.append(np.array([lmc_sampler.step() for _ in range(5000)]))
+    sampler = VanillaLMCSampler(env=env)
 
-        vanilla_sampler = MetropolisHastingsSampler(environment=gmm_env, proposal_std=1)
-        vanilla_samps.append(np.array([vanilla_sampler.step() for _ in range(5000)]))
-
-    lmc_samps = np.array(lmc_samps)
-    vanilla_samps = np.array(vanilla_samps)
-    print(lmc_samps.shape)
-
-    print(univariate_ess(lmc_samps))
-    print(univariate_ess(vanilla_samps))
+    for _ in tqdm(range(10000)):
+        sampler.step()

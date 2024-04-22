@@ -50,6 +50,7 @@ class FisherLMCSampler(object):
             h_diff = self.compute_h_diff(self.current_theta, prop_theta, self.current_score, prop_score, self.epsilon)
             alpha = min(1, np.exp(prop_density + h_diff - self.current_density))
             # print(prop_theta, self.current_theta, prop_density, self.current_density, alpha)
+            self.update_epsilon()
             if alpha > np.random.random():
                 # accept
                 self.current_theta = prop_theta
@@ -57,7 +58,8 @@ class FisherLMCSampler(object):
                 self.current_density = prop_density
                 self.success += 1
             self.total += 1
-            self.update_epsilon()
+
+        self.success, self.total = 0, 0
         self.initialized = True
 
     def update_A(self, alpha, prop_score, current_score):
@@ -80,7 +82,7 @@ class FisherLMCSampler(object):
         """
         Adapt the learning rate
         """
-        alpha = self.success / self.total
+        alpha = self.success / max(1, self.total)
         self.epsilon = self.epsilon * (1 + self.rho * (alpha - OPTIMAL_RATE))
         trace_R = np.trace(self.A) / self.dim
         self.epsilon_normalized = self.epsilon / trace_R
@@ -89,7 +91,7 @@ class FisherLMCSampler(object):
         if not self.initialized:
             self.initialize()
 
-        R = sqrtm(self.A)
+        R = np.real(sqrtm(self.A))
 
         prop_theta = self.current_theta + (self.epsilon_normalized / 2) * self.A @ self.current_score \
             + np.sqrt(self.epsilon_normalized) * R @ np.random.normal(0, 1, self.dim)
@@ -118,31 +120,31 @@ if __name__ == '__main__':
     from metropolis_hastings import MetropolisHastingsSampler
     from tqdm import tqdm
     # Initialize the GMM environment
-    means = [np.array([1, 1]), np.array([-1, -1])]  # Example means
-    covariances = [np.eye(2), np.eye(2)]  # Equal uncorrelated covariances
-    weights = [0.5, 0.5]  # Equal weights
-
-    gmm_env = GaussianMixtures(means, covariances, weights)
-    # lmc_sampler = FisherLMCSampler(env=gmm_env, init_eps=1)
-    # lmc_sampler.initialize()
+    # means = [np.array([1, 1]), np.array([-1, -1])]  # Example means
+    # covariances = [np.eye(2), np.eye(2)]  # Equal uncorrelated covariances
+    # weights = [0.5, 0.5]  # Equal weights
     #
-    # vanilla_sampler = MetropolisHastingsSampler(environment=gmm_env, proposal_std=1)
-
-    lmc_samps, vanilla_samps = [], []
-    for i in tqdm(range(10)):
-        lmc_sampler = FisherLMCSampler(env=gmm_env, init_eps=1)
-        lmc_sampler.initialize()
-        lmc_samps.append(np.array([lmc_sampler.step() for _ in range(5000)]))
-
-        vanilla_sampler = MetropolisHastingsSampler(environment=gmm_env, proposal_std=1)
-        vanilla_samps.append(np.array([vanilla_sampler.step() for _ in range(5000)]))
-
-    lmc_samps = np.array(lmc_samps)
-    vanilla_samps = np.array(vanilla_samps)
-    print(lmc_samps.shape)
-
-    print(univariate_ess(lmc_samps))
-    print(univariate_ess(vanilla_samps))
+    # gmm_env = GaussianMixtures(means, covariances, weights)
+    # # lmc_sampler = FisherLMCSampler(env=gmm_env, init_eps=1)
+    # # lmc_sampler.initialize()
+    # #
+    # # vanilla_sampler = MetropolisHastingsSampler(environment=gmm_env, proposal_std=1)
+    #
+    # lmc_samps, vanilla_samps = [], []
+    # for i in tqdm(range(10)):
+    #     lmc_sampler = FisherLMCSampler(env=gmm_env, init_eps=1)
+    #     lmc_sampler.initialize()
+    #     lmc_samps.append(np.array([lmc_sampler.step() for _ in range(5000)]))
+    #
+    #     vanilla_sampler = MetropolisHastingsSampler(environment=gmm_env, proposal_std=1)
+    #     vanilla_samps.append(np.array([vanilla_sampler.step() for _ in range(5000)]))
+    #
+    # lmc_samps = np.array(lmc_samps)
+    # vanilla_samps = np.array(vanilla_samps)
+    # print(lmc_samps.shape)
+    #
+    # print(univariate_ess(lmc_samps))
+    # print(univariate_ess(vanilla_samps))
 
     # lmc_samps, vanilla_samps = [], []
     # for i in tqdm(range(10000)):
@@ -162,4 +164,14 @@ if __name__ == '__main__':
     # plt.plot(np.arange(len(lmc_dev)), lmc_dev)
     # plt.plot(np.arange(len(vanilla_dev)), vanilla_dev, color="red")
     # plt.show()
+    from envs.bayesian_learning import BayesianLearningSimple, BayesianLearningHard
+    from tqdm import tqdm
+
+    data = np.load("../data/bayesian_learning_hard.npz")
+    env = BayesianLearningHard(data=data)
+
+    sampler = FisherLMCSampler(env=env)
+
+    for _ in tqdm(range(10000)):
+        sampler.step()
 
