@@ -39,39 +39,39 @@ class RiemannLMCSampler(object):
         h_b_a = 0.5 * (theta_b - theta_a - inner_b_a).T @ (score_a + G_a @ gamma_a)
         return h_a_b - h_b_a
 
-    # def compute_h_init(self, theta_a, theta_b,
-    #                    score_a, score_b, epsilon):
-    #     inner_a_b = (epsilon / 4) * score_b
-    #     inner_b_a = (epsilon / 4) * score_a
-    #     h_a_b = 0.5 * (theta_a - theta_b - inner_a_b).T @ score_b
-    #     h_b_a = 0.5 * (theta_b - theta_a - inner_b_a).T @ score_a
-    #     return h_a_b - h_b_a
-    #
-    # def initialize(self):
-    #     init_total, init_success = 0, 0
-    #     for _ in range(self.initialize_iter):
-    #         prop_theta = self.current_theta + (self.epsilon / 2) * self.current_score \
-    #                      + np.sqrt(self.epsilon) * np.random.normal(0, 1, self.dim)
-    #
-    #         prop_density = self.env.log_density(prop_theta)
-    #         prop_score = self.env.gradient(prop_theta)
-    #
-    #         # ignore the G and G_inv here, all identity at initialization
-    #         h_diff = self.compute_h_init(self.current_theta, prop_theta,
-    #                                      self.current_score, prop_score, self.epsilon)
-    #         alpha = min(1, np.exp(prop_density + h_diff - self.current_density))
-    #
-    #         self.update_epsilon(alpha)
-    #         if alpha > np.random.random():
-    #             # accept
-    #             self.current_theta = prop_theta
-    #             self.current_score = prop_score
-    #             self.current_density = prop_density
-    #             init_success += 1
-    #         init_total += 1
-    #
-    #     self.G, self.G_inv, self._gamma = self.prop_G(self.current_theta)
-    #     self.initialized = True
+    def compute_h_init(self, theta_a, theta_b,
+                       score_a, score_b, epsilon):
+        inner_a_b = (epsilon / 4) * score_b
+        inner_b_a = (epsilon / 4) * score_a
+        h_a_b = 0.5 * (theta_a - theta_b - inner_a_b).T @ score_b
+        h_b_a = 0.5 * (theta_b - theta_a - inner_b_a).T @ score_a
+        return h_a_b - h_b_a
+
+    def initialize(self):
+        for _ in range(self.initialize_iter):
+            prop_theta = self.current_theta + (self.epsilon / 2) * self.current_score \
+                         + np.sqrt(self.epsilon) * np.random.normal(0, 1, self.dim)
+
+            prop_density = self.env.log_density(prop_theta)
+            prop_score = self.env.gradient(prop_theta)
+
+            # ignore the G and G_inv here, all identity at initialization
+            h_diff = self.compute_h_init(self.current_theta, prop_theta,
+                                         self.current_score, prop_score, self.epsilon)
+            alpha = min(1, np.exp(prop_density + h_diff - self.current_density))
+
+            if alpha > np.random.random():
+                # accept
+                self.current_theta = prop_theta
+                self.current_score = prop_score
+                self.current_density = prop_density
+                self.success += 1
+            self.total += 1
+            self.update_epsilon()
+
+        self.G, self.G_inv, self._gamma = self.prop_G(self.current_theta)
+        self.success, self.total = 0, 0
+        self.initialized = True
 
     def prop_G(self, prop_theta):
         """
@@ -85,21 +85,21 @@ class RiemannLMCSampler(object):
 
         return G, G_inv, prop_gamma
 
-    def update_epsilon(self, alpha):
+    def update_epsilon(self):
         """
         Adapt the learning rate
         """
-        # alpha = (self.success + 1) / (self.total + 1)
+        alpha = self.success / max(self.total, 1)
         self.epsilon = self.epsilon * (1 + self.rho * (alpha - OPTIMAL_RATE))
         self.epsilon_normalized = self.epsilon
-        # trace_R = np.trace(self.G_inv) / self.dim
-        # self.epsilon_normalized = self.epsilon / trace_R
+        trace_R = np.trace(self.G_inv) / self.dim
+        self.epsilon_normalized = self.epsilon / trace_R
 
     def step(self):
         # if not self.initialized:
         #     self.initialize()
 
-        R = sqrtm(self.G_inv)
+        R = np.real(sqrtm(self.G_inv))
         prop_theta = self.current_theta + \
          (self.epsilon_normalized / 2) * \
          (self.G_inv @ self.current_score + self._gamma) + \
@@ -116,7 +116,7 @@ class RiemannLMCSampler(object):
                                      self.G, prop_G, self.G_inv, prop_G_inv, self.epsilon_normalized)
         alpha = min(1, np.exp(prop_density + h_diff - self.current_density))
 
-        self.update_epsilon(alpha)
+        self.update_epsilon()
         if alpha > np.random.random():
             # accept
             self.current_theta = prop_theta

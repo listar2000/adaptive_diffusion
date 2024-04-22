@@ -96,15 +96,20 @@ def load_diabetes_dataset(file_loc=None):
     return X, y
 
 
+def load_caravan_dataset(file_loc=None):
+    if not file_loc:
+        file_loc = "../data/caravan.csv"
+
+
 if __name__ == '__main__':
     from tqdm import tqdm
     from samplers.riemann_lmc import RiemannLMCSampler
 
     X, y = load_diabetes_dataset()
     env = BayesianLogistics(X=X, y=y, alpha=100)
-    sampler = RiemannLMCSampler(env, step_size_lr=0.015)
+    sampler = RiemannLMCSampler(env)
     sampler.step()
 
     states = []
-    for i in tqdm(range(10000)):
+    for i in tqdm(range(1000)):
         states.append(sampler.step())

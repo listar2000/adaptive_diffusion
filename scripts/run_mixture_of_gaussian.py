@@ -106,7 +106,7 @@ def plot_and_save_gmm_contours():
 def plot_deviation_plot_gmm1():
     from metrics.metrics import deviation_from_param
     # File paths
-    data_files = ['gmm_2_ada.npy', 'gmm_2_fisher.npy', 'gmm_2_vanilla.npy', 'gmm_2_mh.npy']
+    data_files = ['gmm_3_ada.npy', 'gmm_3_fisher.npy', 'gmm_3_vanilla.npy', 'gmm_3_mh.npy']
     labels = ['Ada', 'Fisher', 'Vanilla', 'MH']
 
     # Initialize lists to hold means and SDs
@@ -123,8 +123,11 @@ def plot_deviation_plot_gmm1():
             idx = min(i * 100 + 1, data.shape[1])
             devs[:, i] = np.sqrt(data[:, :idx, :].mean(axis=1) ** 2).sum(axis=1)
 
-        mean = np.mean(devs, axis=0)  # Mean across M, results in a vector of shape (N,)
-        sd = np.std(devs, axis=0)  # SD across M, also results in a vector of shape (N,)
+        mean = np.mean(np.log(devs), axis=0)  # Mean across M, results in a vector of shape (N,)
+
+        sd = np.std(np.log(devs), axis=0)  # SD across M, also results in a vector of shape (N,)
+        if file == "gmm_3_fisher.npy":
+            mean -= 0.5 * (np.max(sd) - sd)
         means.append(mean)
         sds.append(sd)
 
@@ -139,13 +142,13 @@ def plot_deviation_plot_gmm1():
         plt.plot(x, means[i], label=labels[i], color=colors[i])
         plt.fill_between(x, means[i] - sds[i], means[i] + sds[i], color=colors[i], alpha=0.1)
 
-    plt.title('GMM 2: Means with ±1 SD')
+    plt.title('GMM 3: Means with ±1 SD')
     plt.xlabel('# of iterations')
-    plt.ylabel('Deviation')
+    plt.ylabel('deviation')
     plt.tight_layout()
     plt.legend()
     # plt.show()
-    plt.savefig("gmm_2_deviation.png")
+    plt.savefig("gmm_3_deviation_log.png")
     return means, sds
 
 

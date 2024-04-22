@@ -45,7 +45,7 @@ def generate_mh_baseline(TRIALS=100000, mode="easy"):
 
 
 def generate_experiments(TRIAL_TIMES=10, ENSEMBLE=5, N=10000, mode="easy"):
-
+    import time
     prefix = f"bayesian_learning_{mode}_"
 
     env = load_bayesian_learning(mode=mode)
@@ -55,45 +55,53 @@ def generate_experiments(TRIAL_TIMES=10, ENSEMBLE=5, N=10000, mode="easy"):
 
     fisher_esbs = []
     ada_esbs = []
-    mh_esbs = []
+    # mh_esbs = []
     vanilla_esbs = []
     for trial in range(TRIAL_TIMES):
         fisher_esb = []
         ada_esb = []
-        mh_esb = []
+        # mh_esb = []
         vanilla_esb = []
         for e in tqdm(range(ENSEMBLE)):
-            fisher = FisherLMCSampler(env=env, init_eps=1)
-            fisher_esb.append([fisher.step() for _ in range(TOTAL_N)])
-            ada = AdaptiveLMCSampler(env=env, init_eps=1)
-            ada_esb.append([ada.step() for _ in range(TOTAL_N)])
-            vanilla = VanillaLMCSampler(env=env, init_eps=1)
-            vanilla_esb.append([vanilla.step() for _ in range(TOTAL_N)])
-            mh = MetropolisHastingsSampler(environment=env, proposal_std=1)
-            mh_esb.append([mh.step() for _ in range(TOTAL_N)])
+            t = time.time()
+            times = {}
+            fisher = FisherLMCSampler(env=env)
+            fisher_esb.append([fisher.step() for _ in range(TOTAL_N)][BURNIN:])
+            times["fisher"] = time.time() - t
+            t = time.time()
+            ada = AdaptiveLMCSampler(env=env)
+            ada_esb.append([ada.step() for _ in range(TOTAL_N)][BURNIN:])
+            times["ada"] = time.time() - t
+            t = time.time()
+            vanilla = VanillaLMCSampler(env=env)
+            vanilla_esb.append([vanilla.step() for _ in range(TOTAL_N)][BURNIN:])
+            times["vanilla"] = time.time() - t
+            print(times)
+            # mh = MetropolisHastingsSampler(environment=env, proposal_std=1)
+            # mh_esb.append([mh.step() for _ in range(TOTAL_N)][BURNIN:])
 
         fisher_esbs.append(np.array(fisher_esb))
         ada_esbs.append(np.array(ada_esb))
-        mh_esbs.append(np.array(mh_esb))
+        # mh_esbs.append(np.array(mh_esb))
         vanilla_esbs.append(np.array(vanilla_esb))
 
-    with open(f'../data/gmm/' + prefix + 'fisher.npy', 'wb') as f:
+
+    with open(f'../data/bayesian_learning/' + prefix + 'fisher.npy', 'wb') as f:
         np.save(f, fisher_esbs)
         print("saving fisher success")
 
-    with open(f'../data/gmm/' + prefix + 'ada.npy', 'wb') as f:
+    with open(f'../data/bayesian_learning/' + prefix + 'ada.npy', 'wb') as f:
         np.save(f, ada_esbs)
         print("saving ada success")
 
-    with open(f'../data/gmm/' + prefix + 'mh.npy', 'wb') as f:
-        np.save(f, mh_esbs)
-        print("saving mh success")
+    # with open(f'../data/gmm/' + prefix + 'mh.npy', 'wb') as f:
+    #     np.save(f, mh_esbs)
+    #     print("saving mh success")
 
-    with open(f'../data/gmm/' + prefix + 'vanilla.npy', 'wb') as f:
+    with open(f'../data/bayesian_learning/' + prefix + 'vanilla.npy', 'wb') as f:
         np.save(f, vanilla_esbs)
         print("saivng vanilla success")
 
 
 if __name__ == "__main__":
-    generate_mh_baseline(mode="easy")
-    generate_mh_baseline(mode="hard")
+    generate_experiments(mode="easy")

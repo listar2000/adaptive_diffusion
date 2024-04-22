@@ -50,7 +50,6 @@ class FisherLMCSampler(object):
             h_diff = self.compute_h_diff(self.current_theta, prop_theta, self.current_score, prop_score, self.epsilon)
             alpha = min(1, np.exp(prop_density + h_diff - self.current_density))
             # print(prop_theta, self.current_theta, prop_density, self.current_density, alpha)
-            self.update_epsilon()
             if alpha > np.random.random():
                 # accept
                 self.current_theta = prop_theta
@@ -58,6 +57,7 @@ class FisherLMCSampler(object):
                 self.current_density = prop_density
                 self.success += 1
             self.total += 1
+            self.update_epsilon()
 
         self.success, self.total = 0, 0
         self.initialized = True
