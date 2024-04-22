@@ -100,6 +100,11 @@ def load_caravan_dataset(file_loc=None):
     if not file_loc:
         file_loc = "../data/caravan.csv"
 
+    data = pd.read_csv(file_loc)
+    X = data.iloc[:, 1:-1].values
+    y = data.iloc[:, -1].values
+    return X, y
+
 
 if __name__ == '__main__':
     from tqdm import tqdm
